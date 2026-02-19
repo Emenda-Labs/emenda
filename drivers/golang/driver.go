@@ -6,7 +6,9 @@ import (
 
 	"github.com/emenda-labs/emenda/core/changespec"
 	"github.com/emenda-labs/emenda/core/driver"
+	"github.com/emenda-labs/emenda/drivers/golang/astdiff"
 	"github.com/emenda-labs/emenda/pkg/archive"
+	"github.com/emenda-labs/emenda/pkg/gomod"
 	"github.com/emenda-labs/emenda/pkg/goproxy"
 )
 
@@ -42,7 +44,48 @@ func (d *Driver) FetchSource(ctx context.Context, module, version string) (strin
 // ComputeChanges diffs two unpacked Go module versions.
 // Internally parses exports from both versions and computes the diff.
 func (d *Driver) ComputeChanges(ctx context.Context, oldPath, newPath, oldVersion, newVersion string) (changespec.ChangeSpec, error) {
-	return changespec.ChangeSpec{}, fmt.Errorf("not implemented")
+	oldRoot, err := astdiff.FindSourceRoot(oldPath)
+	if err != nil {
+		return changespec.ChangeSpec{}, fmt.Errorf("finding module root in %s: %w", oldVersion, err)
+	}
+
+	module, err := gomod.FindModulePath(oldRoot)
+	if err != nil {
+		return changespec.ChangeSpec{}, fmt.Errorf("reading module path from %s: %w", oldVersion, err)
+	}
+
+	newRoot, err := astdiff.FindSourceRoot(newPath)
+	if err != nil {
+		return changespec.ChangeSpec{}, fmt.Errorf("finding module root in %s: %w", newVersion, err)
+	}
+
+	// Validate both zips contain the same module.
+	newModule, err := gomod.FindModulePath(newRoot)
+	if err != nil {
+		return changespec.ChangeSpec{}, fmt.Errorf("reading module path from %s: %w", newVersion, err)
+	}
+	if module != newModule {
+		return changespec.ChangeSpec{}, fmt.Errorf("module mismatch: old=%s new=%s", module, newModule)
+	}
+
+	old, oldSigs, err := astdiff.ParseExports(oldRoot, module)
+	if err != nil {
+		return changespec.ChangeSpec{}, fmt.Errorf("parsing exports from %s: %w", oldVersion, err)
+	}
+
+	new, newSigs, err := astdiff.ParseExports(newRoot, module)
+	if err != nil {
+		return changespec.ChangeSpec{}, fmt.Errorf("parsing exports from %s: %w", newVersion, err)
+	}
+
+	changes := astdiff.DiffExports(old, new, oldSigs, newSigs)
+
+	return changespec.ChangeSpec{
+		Module:     module,
+		OldVersion: oldVersion,
+		NewVersion: newVersion,
+		Changes:    changes,
+	}, nil
 }
 
 // ApplyChanges applies breaking change fixes to Go source files.
