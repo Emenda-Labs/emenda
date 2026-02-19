@@ -1,0 +1,109 @@
+<mxfile host="65bd71144e">
+    <diagram name="emenda-pipeline" id="pipeline">
+        <mxGraphModel dx="1448" dy="399" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1200" background="#07090f" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="title1" value="PIPELINE ARCHITECTURE" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=0;fontColor=#10b981;fontSize=10;fontFamily=Courier New;spacingTop=0;" parent="1" vertex="1">
+                    <mxGeometry x="275" y="8" width="300" height="20" as="geometry"/>
+                </mxCell>
+                <mxCell id="title2" value="emenda" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=0;fontColor=#f9fafb;fontSize=20;fontStyle=1;fontFamily=Courier New;" parent="1" vertex="1">
+                    <mxGeometry x="325" y="26" width="200" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="cli" value="&lt;b&gt;CLI Input&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6b7280;&quot;&gt;--module  --to  --repo&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0a1628;strokeColor=#3b82f6;fontColor=#60a5fa;fontSize=12;fontFamily=Courier New;verticalAlign=middle;arcSize=15;strokeWidth=1.5;" parent="1" vertex="1">
+                    <mxGeometry x="305" y="70" width="240" height="56" as="geometry"/>
+                </mxCell>
+                <mxCell id="scan" value="&lt;b&gt;Repo Scanner&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6b7280;&quot;&gt;recursive .go file scan → import list&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0a1f18;strokeColor=#10b981;fontColor=#34d399;fontSize=12;fontFamily=Courier New;verticalAlign=middle;arcSize=15;strokeWidth=1.5;" parent="1" vertex="1">
+                    <mxGeometry x="80" y="210" width="240" height="56" as="geometry"/>
+                </mxCell>
+                <mxCell id="astdiff" value="&lt;b&gt;AST Diff Engine&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6b7280;&quot;&gt;fetch both versions via proxy · diff exports&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0a1f18;strokeColor=#10b981;fontColor=#34d399;fontSize=12;fontFamily=Courier New;verticalAlign=middle;arcSize=15;strokeWidth=1.5;" parent="1" vertex="1">
+                    <mxGeometry x="530" y="210" width="240" height="56" as="geometry"/>
+                </mxCell>
+                <mxCell id="changespec" value="&lt;b&gt;Change Spec&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6b7280;&quot;&gt;JSON: renames · removed · signature changes&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1a180a;strokeColor=#f59e0b;fontColor=#fbbf24;fontSize=12;fontFamily=Courier New;verticalAlign=middle;arcSize=15;strokeWidth=1.5;" parent="1" vertex="1">
+                    <mxGeometry x="305" y="350" width="240" height="56" as="geometry"/>
+                </mxCell>
+                <mxCell id="intersect" value="&lt;b&gt;Impact Intersection&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6b7280;&quot;&gt;files x change spec = what breaks where&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#160a20;strokeColor=#a855f7;fontColor=#c084fc;fontSize=12;fontFamily=Courier New;verticalAlign=middle;arcSize=15;strokeWidth=1.5;" parent="1" vertex="1">
+                    <mxGeometry x="305" y="460" width="240" height="56" as="geometry"/>
+                </mxCell>
+                <mxCell id="importresolver" value="&lt;b&gt;Import Resolver&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6b7280;&quot;&gt;reads file AST → resolves import aliases&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0a1f18;strokeColor=#10b981;fontColor=#34d399;fontSize=12;fontFamily=Courier New;verticalAlign=middle;arcSize=15;strokeWidth=1.5;" parent="1" vertex="1">
+                    <mxGeometry x="305" y="570" width="240" height="56" as="geometry"/>
+                </mxCell>
+                <mxCell id="scriptgen" value="&lt;b&gt;Script Generator&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6b7280;&quot;&gt;change spec → rf script&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0f1a0a;strokeColor=#84cc16;fontColor=#a3e635;fontSize=12;fontFamily=Courier New;verticalAlign=middle;arcSize=15;strokeWidth=1.5;" parent="1" vertex="1">
+                    <mxGeometry x="305" y="680" width="240" height="56" as="geometry"/>
+                </mxCell>
+                <mxCell id="rf_known" value="&lt;b&gt;rf — path 1&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6b7280;&quot;&gt;known patterns · writes files directly&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0f1a0a;strokeColor=#84cc16;fontColor=#a3e635;fontSize=12;fontFamily=Courier New;verticalAlign=middle;arcSize=15;strokeWidth=1.5;" parent="1" vertex="1">
+                    <mxGeometry x="80" y="830" width="240" height="56" as="geometry"/>
+                </mxCell>
+                <mxCell id="ai" value="&lt;b&gt;AI Agent&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6b7280;&quot;&gt;unknown patterns · generates rf script&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#200a0a;strokeColor=#ef4444;fontColor=#f87171;fontSize=12;fontFamily=Courier New;verticalAlign=middle;arcSize=15;strokeWidth=1.5;" parent="1" vertex="1">
+                    <mxGeometry x="530" y="830" width="240" height="56" as="geometry"/>
+                </mxCell>
+                <mxCell id="rf_ai" value="&lt;b&gt;rf — path 2&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6b7280;&quot;&gt;AI-generated script · writes files directly&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0f1a0a;strokeColor=#84cc16;fontColor=#a3e635;fontSize=12;fontFamily=Courier New;verticalAlign=middle;arcSize=15;strokeWidth=1.5;" parent="1" vertex="1">
+                    <mxGeometry x="530" y="950" width="240" height="56" as="geometry"/>
+                </mxCell>
+                <mxCell id="pr" value="&lt;b&gt;Pull Request&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#6b7280;&quot;&gt;path 1 commits · path 2 commits · TODO list&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0a1628;strokeColor=#818cf8;fontColor=#a5b4fc;fontSize=12;fontFamily=Courier New;verticalAlign=middle;arcSize=15;strokeWidth=1.5;" parent="1" vertex="1">
+                    <mxGeometry x="305" y="1090" width="240" height="56" as="geometry"/>
+                </mxCell>
+                <mxCell id="e1" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=1;strokeColor=#60a5fa;strokeWidth=1.5;endArrow=block;endFill=1;exitX=0.25;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="1" source="cli" target="scan" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e2" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=1;strokeColor=#60a5fa;strokeWidth=1.5;endArrow=block;endFill=1;exitX=0.75;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="1" source="cli" target="astdiff" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e3" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=1;strokeColor=#fbbf24;strokeWidth=1.5;endArrow=block;endFill=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.25;entryY=0;entryDx=0;entryDy=0;" parent="1" source="scan" target="changespec" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e4" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=1;strokeColor=#fbbf24;strokeWidth=1.5;endArrow=block;endFill=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.75;entryY=0;entryDx=0;entryDy=0;" parent="1" source="astdiff" target="changespec" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e5" style="html=1;rounded=1;strokeColor=#c084fc;strokeWidth=1.5;endArrow=block;endFill=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="1" source="changespec" target="intersect" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e6" value="&lt;span style=&quot;font-size:9px;color:#6b7280;font-family:Courier New;&quot;&gt;affected files + symbols&lt;/span&gt;" style="html=1;rounded=1;strokeColor=#34d399;strokeWidth=1.5;endArrow=block;endFill=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;labelBackgroundColor=none;" parent="1" source="intersect" target="importresolver" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e7" style="html=1;rounded=1;strokeColor=#a3e635;strokeWidth=1.5;endArrow=block;endFill=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="1" source="importresolver" target="scriptgen" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e8" value="&lt;span style=&quot;font-size:9px;color:#a3e635;font-family:Courier New;&quot;&gt;path 1 · known patterns&lt;/span&gt;" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=1;strokeColor=#a3e635;strokeWidth=1.5;endArrow=block;endFill=1;exitX=0.25;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;labelBackgroundColor=none;" parent="1" source="scriptgen" target="rf_known" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e9" value="&lt;span style=&quot;font-size:9px;color:#f87171;font-family:Courier New;&quot;&gt;path 2 · unknown patterns&lt;/span&gt;" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=1;strokeColor=#f87171;strokeWidth=1.5;endArrow=block;endFill=1;exitX=0.75;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;labelBackgroundColor=none;" parent="1" source="scriptgen" target="ai" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e10" value="&lt;span style=&quot;font-size:9px;color:#6b7280;font-family:Courier New;&quot;&gt;generated rf script&lt;/span&gt;" style="html=1;rounded=1;strokeColor=#f87171;strokeWidth=1.5;endArrow=block;endFill=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;labelBackgroundColor=none;" parent="1" source="ai" target="rf_ai" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e11" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=1;strokeColor=#a3e635;strokeWidth=1.5;endArrow=block;endFill=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.25;entryY=0;entryDx=0;entryDy=0;" parent="1" source="rf_known" target="pr" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e12" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=1;strokeColor=#a3e635;strokeWidth=1.5;endArrow=block;endFill=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.75;entryY=0;entryDx=0;entryDy=0;" parent="1" source="rf_ai" target="pr" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="leg_bg" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0d1117;strokeColor=#1f2937;strokeWidth=1;arcSize=10;" parent="1" vertex="1">
+                    <mxGeometry x="120" y="1170" width="610" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="leg1" value="&lt;span style=&quot;color:#3b82f6;font-size:14px;&quot;&gt;■&lt;/span&gt;&lt;span style=&quot;color:#6b7280;font-size:9px;font-family:Courier New;&quot;&gt; entry&lt;/span&gt;" style="text;html=1;align=left;verticalAlign=middle;resizable=0;points=[];autosize=0;" parent="1" vertex="1">
+                    <mxGeometry x="130" y="1173" width="65" height="24" as="geometry"/>
+                </mxCell>
+                <mxCell id="leg2" value="&lt;span style=&quot;color:#10b981;font-size:14px;&quot;&gt;■&lt;/span&gt;&lt;span style=&quot;color:#6b7280;font-size:9px;font-family:Courier New;&quot;&gt; scanner&lt;/span&gt;" style="text;html=1;align=left;verticalAlign=middle;resizable=0;points=[];autosize=0;" parent="1" vertex="1">
+                    <mxGeometry x="200" y="1173" width="75" height="24" as="geometry"/>
+                </mxCell>
+                <mxCell id="leg3" value="&lt;span style=&quot;color:#f59e0b;font-size:14px;&quot;&gt;■&lt;/span&gt;&lt;span style=&quot;color:#6b7280;font-size:9px;font-family:Courier New;&quot;&gt; artifact&lt;/span&gt;" style="text;html=1;align=left;verticalAlign=middle;resizable=0;points=[];autosize=0;" parent="1" vertex="1">
+                    <mxGeometry x="285" y="1173" width="75" height="24" as="geometry"/>
+                </mxCell>
+                <mxCell id="leg4" value="&lt;span style=&quot;color:#a855f7;font-size:14px;&quot;&gt;■&lt;/span&gt;&lt;span style=&quot;color:#6b7280;font-size:9px;font-family:Courier New;&quot;&gt; decision&lt;/span&gt;" style="text;html=1;align=left;verticalAlign=middle;resizable=0;points=[];autosize=0;" parent="1" vertex="1">
+                    <mxGeometry x="370" y="1173" width="80" height="24" as="geometry"/>
+                </mxCell>
+                <mxCell id="leg5" value="&lt;span style=&quot;color:#84cc16;font-size:14px;&quot;&gt;■&lt;/span&gt;&lt;span style=&quot;color:#6b7280;font-size:9px;font-family:Courier New;&quot;&gt; rf engine&lt;/span&gt;" style="text;html=1;align=left;verticalAlign=middle;resizable=0;points=[];autosize=0;" parent="1" vertex="1">
+                    <mxGeometry x="460" y="1173" width="80" height="24" as="geometry"/>
+                </mxCell>
+                <mxCell id="leg6" value="&lt;span style=&quot;color:#ef4444;font-size:14px;&quot;&gt;■&lt;/span&gt;&lt;span style=&quot;color:#6b7280;font-size:9px;font-family:Courier New;&quot;&gt; ai agent&lt;/span&gt;" style="text;html=1;align=left;verticalAlign=middle;resizable=0;points=[];autosize=0;" parent="1" vertex="1">
+                    <mxGeometry x="550" y="1173" width="75" height="24" as="geometry"/>
+                </mxCell>
+                <mxCell id="leg7" value="&lt;span style=&quot;color:#818cf8;font-size:14px;&quot;&gt;■&lt;/span&gt;&lt;span style=&quot;color:#6b7280;font-size:9px;font-family:Courier New;&quot;&gt; git/pr&lt;/span&gt;" style="text;html=1;align=left;verticalAlign=middle;resizable=0;points=[];autosize=0;" parent="1" vertex="1">
+                    <mxGeometry x="635" y="1173" width="65" height="24" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+</mxfile>
