@@ -47,3 +47,28 @@ func FindModuleVersion(repoPath, module string) (string, error) {
 
 	return "", fmt.Errorf("module %s not found in go.mod at %s", module, gomodPath)
 }
+
+// FindModulePath reads the go.mod in the given directory and returns
+// the module path from the module directive.
+func FindModulePath(dir string) (string, error) {
+	gomodPath := filepath.Join(dir, "go.mod")
+
+	data, err := os.ReadFile(gomodPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return "", fmt.Errorf("no go.mod found at %s", gomodPath)
+		}
+		return "", fmt.Errorf("reading go.mod: %w", err)
+	}
+
+	f, err := modfile.Parse(gomodPath, data, nil)
+	if err != nil {
+		return "", fmt.Errorf("parsing go.mod: %w", err)
+	}
+
+	if f.Module == nil {
+		return "", fmt.Errorf("no module directive in %s", gomodPath)
+	}
+
+	return f.Module.Mod.Path, nil
+}

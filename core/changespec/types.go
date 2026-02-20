@@ -11,15 +11,26 @@ const (
 	ChangeKindPackageMoved     ChangeKind = "package_moved"
 )
 
+// ConfidenceLevel indicates how confident the differ is that a change was correctly classified.
+type ConfidenceLevel string
+
+const (
+	ConfidenceHigh   ConfidenceLevel = "high"
+	ConfidenceMedium ConfidenceLevel = "medium"
+	ConfidenceLow    ConfidenceLevel = "low"
+)
+
 // Change represents a single breaking API change between two versions.
 type Change struct {
 	Kind         ChangeKind `json:"kind"`
+	// Symbol is the changed symbol name. For methods, uses Receiver.Method format (e.g. Client.Do).
 	Symbol       string     `json:"symbol"`
 	Package      string     `json:"package"`
 	OldSignature string     `json:"old_signature,omitempty"`
 	NewSignature string     `json:"new_signature,omitempty"`
 	NewName      string     `json:"new_name,omitempty"`
 	NewPackage   string     `json:"new_package,omitempty"`
+	Confidence   ConfidenceLevel `json:"confidence"`
 }
 
 // ChangeSpec is the full set of breaking changes between two module versions.
