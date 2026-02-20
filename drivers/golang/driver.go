@@ -68,12 +68,12 @@ func (d *Driver) ComputeChanges(ctx context.Context, oldPath, newPath, oldVersio
 		return changespec.ChangeSpec{}, fmt.Errorf("module mismatch: old=%s new=%s", module, newModule)
 	}
 
-	old, oldSigs, err := astdiff.ParseExports(oldRoot, module)
+	old, oldSigs, err := astdiff.ParseExports(ctx, oldRoot, module)
 	if err != nil {
 		return changespec.ChangeSpec{}, fmt.Errorf("parsing exports from %s: %w", oldVersion, err)
 	}
 
-	new, newSigs, err := astdiff.ParseExports(newRoot, module)
+	new, newSigs, err := astdiff.ParseExports(ctx, newRoot, module)
 	if err != nil {
 		return changespec.ChangeSpec{}, fmt.Errorf("parsing exports from %s: %w", newVersion, err)
 	}

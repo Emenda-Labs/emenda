@@ -15,31 +15,41 @@ type funcSignature struct {
 	results []string // result type strings only
 }
 
+// maxTypeDepth is the maximum nesting depth for type expression rendering.
+// Prevents stack overflow from maliciously crafted deeply nested types.
+const maxTypeDepth = 128
+
 // renderTypeExpr converts any ast.Expr to its canonical string representation.
 // This is the single source of truth for type rendering across the package.
 func renderTypeExpr(fset *token.FileSet, expr ast.Expr) string {
-	if expr == nil {
+	return renderTypeExprDepth(fset, expr, 0)
+}
+
+func renderTypeExprDepth(fset *token.FileSet, expr ast.Expr, depth int) string {
+	if expr == nil || depth > maxTypeDepth {
 		return ""
 	}
+
+	next := depth + 1
 
 	switch e := expr.(type) {
 	case *ast.Ident:
 		return e.Name
 
 	case *ast.SelectorExpr:
-		return renderTypeExpr(fset, e.X) + "." + e.Sel.Name
+		return renderTypeExprDepth(fset, e.X, next) + "." + e.Sel.Name
 
 	case *ast.StarExpr:
-		return "*" + renderTypeExpr(fset, e.X)
+		return "*" + renderTypeExprDepth(fset, e.X, next)
 
 	case *ast.ArrayType:
 		if e.Len != nil {
-			return fmt.Sprintf("[%s]%s", renderTypeExpr(fset, e.Len), renderTypeExpr(fset, e.Elt))
+			return fmt.Sprintf("[%s]%s", renderTypeExprDepth(fset, e.Len, next), renderTypeExprDepth(fset, e.Elt, next))
 		}
-		return "[]" + renderTypeExpr(fset, e.Elt)
+		return "[]" + renderTypeExprDepth(fset, e.Elt, next)
 
 	case *ast.MapType:
-		return "map[" + renderTypeExpr(fset, e.Key) + "]" + renderTypeExpr(fset, e.Value)
+		return "map[" + renderTypeExprDepth(fset, e.Key, next) + "]" + renderTypeExprDepth(fset, e.Value, next)
 
 	case *ast.InterfaceType:
 		if e.Methods == nil || len(e.Methods.List) == 0 {
@@ -52,33 +62,33 @@ func renderTypeExpr(fset *token.FileSet, expr ast.Expr) string {
 		return "func" + renderFuncSignature(sig)
 
 	case *ast.Ellipsis:
-		return "..." + renderTypeExpr(fset, e.Elt)
+		return "..." + renderTypeExprDepth(fset, e.Elt, next)
 
 	case *ast.ChanType:
 		switch e.Dir {
 		case ast.RECV:
-			return "<-chan " + renderTypeExpr(fset, e.Value)
+			return "<-chan " + renderTypeExprDepth(fset, e.Value, next)
 		case ast.SEND:
-			return "chan<- " + renderTypeExpr(fset, e.Value)
+			return "chan<- " + renderTypeExprDepth(fset, e.Value, next)
 		default:
-			return "chan " + renderTypeExpr(fset, e.Value)
+			return "chan " + renderTypeExprDepth(fset, e.Value, next)
 		}
 
 	case *ast.StructType:
 		return "struct{...}"
 
 	case *ast.IndexExpr:
-		return renderTypeExpr(fset, e.X) + "[" + renderTypeExpr(fset, e.Index) + "]"
+		return renderTypeExprDepth(fset, e.X, next) + "[" + renderTypeExprDepth(fset, e.Index, next) + "]"
 
 	case *ast.IndexListExpr:
 		indices := make([]string, len(e.Indices))
 		for i, idx := range e.Indices {
-			indices[i] = renderTypeExpr(fset, idx)
+			indices[i] = renderTypeExprDepth(fset, idx, next)
 		}
-		return renderTypeExpr(fset, e.X) + "[" + strings.Join(indices, ", ") + "]"
+		return renderTypeExprDepth(fset, e.X, next) + "[" + strings.Join(indices, ", ") + "]"
 
 	case *ast.ParenExpr:
-		return "(" + renderTypeExpr(fset, e.X) + ")"
+		return "(" + renderTypeExprDepth(fset, e.X, next) + ")"
 
 	case *ast.BasicLit:
 		return e.Value
@@ -97,16 +107,8 @@ func extractFuncSignature(fset *token.FileSet, funcType *ast.FuncType) funcSigna
 
 	var params []string
 	if funcType.Params != nil {
-		for i, field := range funcType.Params.List {
+		for _, field := range funcType.Params.List {
 			typeStr := renderTypeExpr(fset, field.Type)
-
-			// Handle variadic: last param field may have *ast.Ellipsis type.
-			isLastField := i == len(funcType.Params.List)-1
-			if isLastField {
-				if _, ok := field.Type.(*ast.Ellipsis); ok {
-					typeStr = renderTypeExpr(fset, field.Type)
-				}
-			}
 
 			if len(field.Names) == 0 {
 				// Unnamed parameter (common in interface method signatures).
@@ -227,11 +229,6 @@ func renderInterfaceSignature(fset *token.FileSet, interfaceType *ast.InterfaceT
 		return "interface{}"
 	}
 	return "interface{" + strings.Join(entries, "; ") + "}"
-}
-
-// extractFieldType renders a struct field's type expression to a string.
-func extractFieldType(fset *token.FileSet, expr ast.Expr) string {
-	return renderTypeExpr(fset, expr)
 }
 
 // extractConstVarType returns the explicit type of a const or var spec.

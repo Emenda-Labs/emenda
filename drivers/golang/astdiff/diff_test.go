@@ -1,6 +1,7 @@
 package astdiff
 
 import (
+	"context"
 	"path/filepath"
 	"sort"
 	"testing"
@@ -16,7 +17,7 @@ func buildSymbols(module string, entries []symbols.Symbol) symbols.Symbols {
 
 func TestDiffExports_IdenticalModules(t *testing.T) {
 	dir := filepath.Join(testdataDir(t), "old")
-	syms, sigs, err := ParseExports(dir, "github.com/acme/testmod")
+	syms, sigs, err := ParseExports(context.Background(), dir, "github.com/acme/testmod")
 	if err != nil {
 		t.Fatalf("ParseExports: %v", err)
 	}
@@ -34,12 +35,12 @@ func TestDiffExports_FullFixtures(t *testing.T) {
 	oldDir := filepath.Join(testdataDir(t), "old")
 	newDir := filepath.Join(testdataDir(t), "new")
 
-	oldSyms, oldSigs, err := ParseExports(oldDir, "github.com/acme/testmod")
+	oldSyms, oldSigs, err := ParseExports(context.Background(), oldDir, "github.com/acme/testmod")
 	if err != nil {
 		t.Fatalf("ParseExports old: %v", err)
 	}
 
-	newSyms, newSigs, err := ParseExports(newDir, "github.com/acme/testmod")
+	newSyms, newSigs, err := ParseExports(context.Background(), newDir, "github.com/acme/testmod")
 	if err != nil {
 		t.Fatalf("ParseExports new: %v", err)
 	}

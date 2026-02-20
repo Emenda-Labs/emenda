@@ -1,6 +1,7 @@
 package astdiff
 
 import (
+	"context"
 	"fmt"
 	"go/ast"
 	"go/parser"
@@ -28,7 +29,7 @@ type FuncSigMap map[symbolKey]funcSignature
 // The module parameter is the Go module import path (e.g. "github.com/acme/foo").
 // Returns the symbol set and a cached map of structured function signatures for
 // use in DiffExports fuzzy matching.
-func ParseExports(rootDir, module string) (symbols.Symbols, FuncSigMap, error) {
+func ParseExports(ctx context.Context, rootDir, module string) (symbols.Symbols, FuncSigMap, error) {
 	sourceRoot, err := FindSourceRoot(rootDir)
 	if err != nil {
 		return symbols.Symbols{}, nil, fmt.Errorf("finding source root in %s: %w", rootDir, err)
@@ -43,6 +44,15 @@ func ParseExports(rootDir, module string) (symbols.Symbols, FuncSigMap, error) {
 			return err
 		}
 
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+
+		// Skip symlinks to prevent symlink-based path escapes.
+		if d.Type()&os.ModeSymlink != 0 {
+			return nil
+		}
+
 		if d.IsDir() {
 			base := d.Name()
 			if base == "internal" || base == "testdata" || base == "vendor" || strings.HasPrefix(base, "_") {
@@ -55,7 +65,7 @@ func ParseExports(rootDir, module string) (symbols.Symbols, FuncSigMap, error) {
 			return nil
 		}
 
-		file, parseErr := parser.ParseFile(fset, path, nil, parser.ParseComments)
+		file, parseErr := parser.ParseFile(fset, path, nil, 0)
 		if parseErr != nil {
 			fmt.Fprintf(os.Stderr, "warning: skipping %s: %v\n", path, parseErr)
 			return nil
@@ -164,7 +174,7 @@ func collectTypes(fset *token.FileSet, genDecl *ast.GenDecl, pkgPath string, ent
 		for _, field := range structType.Fields.List {
 			if len(field.Names) == 0 {
 				// Embedded field: emit if the type name is exported.
-				embName := embeddedFieldName(field.Type)
+				embName := baseTypeName(field.Type)
 				if embName == "" || !ast.IsExported(embName) {
 					continue
 				}
@@ -172,7 +182,7 @@ func collectTypes(fset *token.FileSet, genDecl *ast.GenDecl, pkgPath string, ent
 					Kind:      symbols.SymbolField,
 					Name:      typeName + "." + embName,
 					Package:   pkgPath,
-					Signature: extractFieldType(fset, field.Type),
+					Signature: renderTypeExpr(fset, field.Type),
 				})
 				continue
 			}
@@ -185,7 +195,7 @@ func collectTypes(fset *token.FileSet, genDecl *ast.GenDecl, pkgPath string, ent
 					Kind:      symbols.SymbolField,
 					Name:      typeName + "." + name.Name,
 					Package:   pkgPath,
-					Signature: extractFieldType(fset, field.Type),
+					Signature: renderTypeExpr(fset, field.Type),
 				})
 			}
 		}
@@ -224,15 +234,13 @@ func computePackagePath(sourceRoot, filePath, module string) string {
 	return module + "/" + filepath.ToSlash(relDir)
 }
 
-// receiverTypeName extracts the base type name from a method receiver.
-// Strips pointer (*), type parameters ([T any]), and package qualifiers.
+// baseTypeName extracts the base type name from an AST expression,
+// stripping pointers, type parameters (generics), and package selectors.
 // Examples: *Client -> "Client", Foo[T] -> "Foo", *Bar[T, U] -> "Bar"
-func receiverTypeName(recv *ast.FieldList) string {
-	if recv == nil || len(recv.List) == 0 {
+func baseTypeName(expr ast.Expr) string {
+	if expr == nil {
 		return ""
 	}
-
-	expr := recv.List[0].Type
 
 	// Strip pointer.
 	if star, ok := expr.(*ast.StarExpr); ok {
@@ -257,34 +265,12 @@ func receiverTypeName(recv *ast.FieldList) string {
 	return ""
 }
 
-// embeddedFieldName extracts the base type name from an embedded struct field.
-// Strips pointer and package selector: *http.Client -> "Client", Transport -> "Transport"
-func embeddedFieldName(expr ast.Expr) string {
-	if expr == nil {
+// receiverTypeName extracts the base type name from a method receiver.
+func receiverTypeName(recv *ast.FieldList) string {
+	if recv == nil || len(recv.List) == 0 {
 		return ""
 	}
-
-	// Strip pointer.
-	if star, ok := expr.(*ast.StarExpr); ok {
-		expr = star.X
-	}
-
-	// Strip type parameters.
-	if idx, ok := expr.(*ast.IndexExpr); ok {
-		expr = idx.X
-	}
-	if idx, ok := expr.(*ast.IndexListExpr); ok {
-		expr = idx.X
-	}
-
-	if ident, ok := expr.(*ast.Ident); ok {
-		return ident.Name
-	}
-	if sel, ok := expr.(*ast.SelectorExpr); ok {
-		return sel.Sel.Name
-	}
-
-	return ""
+	return baseTypeName(recv.List[0].Type)
 }
 
 // FindSourceRoot walks from dir looking for go.mod to find the module source root.

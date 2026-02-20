@@ -24,19 +24,28 @@ const (
 
 // diffState holds the working state across all diff passes.
 type diffState struct {
-	oldByKey   map[symbolKey]*symbols.Symbol
-	newByKey   map[symbolKey]*symbols.Symbol
-	matchedOld map[symbolKey]bool
-	matchedNew map[symbolKey]bool
-	oldSigs    FuncSigMap
-	newSigs    FuncSigMap
-	changes    []changespec.Change
+	oldByKey        map[symbolKey]*symbols.Symbol
+	newByKey        map[symbolKey]*symbols.Symbol
+	unmatchedOldSet map[symbolKey]struct{}
+	unmatchedNewSet map[symbolKey]struct{}
+	oldSigs         FuncSigMap
+	newSigs         FuncSigMap
+	typeRenames     map[string]string
+	changes         []changespec.Change
 }
 
 // nameKey is a secondary index for cross-kind detection (same name, different kind).
 type nameKey struct {
 	pkg  string
 	name string
+}
+
+// sigGroupKey is the composite key for grouping symbols by signature in Pass 3.
+// Using a struct avoids ambiguity from string concatenation with delimiters.
+type sigGroupKey struct {
+	sig  string
+	kind symbols.SymbolKind
+	pkg  string
 }
 
 // scoredPair holds a candidate fuzzy match with its composite score.
@@ -50,22 +59,25 @@ type scoredPair struct {
 // newDiffState builds indexed lookup maps from old and new symbol sets.
 func newDiffState(old, new symbols.Symbols, oldSigs, newSigs FuncSigMap) *diffState {
 	s := &diffState{
-		oldByKey:   make(map[symbolKey]*symbols.Symbol, len(old.Entries)),
-		newByKey:   make(map[symbolKey]*symbols.Symbol, len(new.Entries)),
-		matchedOld: make(map[symbolKey]bool),
-		matchedNew: make(map[symbolKey]bool),
-		oldSigs:    oldSigs,
-		newSigs:    newSigs,
+		oldByKey:        make(map[symbolKey]*symbols.Symbol, len(old.Entries)),
+		newByKey:        make(map[symbolKey]*symbols.Symbol, len(new.Entries)),
+		unmatchedOldSet: make(map[symbolKey]struct{}, len(old.Entries)),
+		unmatchedNewSet: make(map[symbolKey]struct{}, len(new.Entries)),
+		oldSigs:         oldSigs,
+		newSigs:         newSigs,
+		typeRenames:     make(map[string]string),
 	}
 	for i := range old.Entries {
 		sym := &old.Entries[i]
 		key := symbolKey{pkg: sym.Package, kind: sym.Kind, name: sym.Name}
 		s.oldByKey[key] = sym
+		s.unmatchedOldSet[key] = struct{}{}
 	}
 	for i := range new.Entries {
 		sym := &new.Entries[i]
 		key := symbolKey{pkg: sym.Package, kind: sym.Kind, name: sym.Name}
 		s.newByKey[key] = sym
+		s.unmatchedNewSet[key] = struct{}{}
 	}
 	return s
 }
@@ -84,8 +96,8 @@ func DiffExports(old, new symbols.Symbols, oldSigs, newSigs FuncSigMap) []change
 }
 
 func (s *diffState) markMatched(oldKey, newKey symbolKey) {
-	s.matchedOld[oldKey] = true
-	s.matchedNew[newKey] = true
+	delete(s.unmatchedOldSet, oldKey)
+	delete(s.unmatchedNewSet, newKey)
 }
 
 func (s *diffState) emit(c changespec.Change) {
@@ -93,32 +105,29 @@ func (s *diffState) emit(c changespec.Change) {
 }
 
 func (s *diffState) unmatchedOld() []symbolKey {
-	var keys []symbolKey
-	for k := range s.oldByKey {
-		if !s.matchedOld[k] {
-			keys = append(keys, k)
-		}
+	keys := make([]symbolKey, 0, len(s.unmatchedOldSet))
+	for k := range s.unmatchedOldSet {
+		keys = append(keys, k)
 	}
 	return keys
 }
 
 func (s *diffState) unmatchedNew() []symbolKey {
-	var keys []symbolKey
-	for k := range s.newByKey {
-		if !s.matchedNew[k] {
-			keys = append(keys, k)
-		}
+	keys := make([]symbolKey, 0, len(s.unmatchedNewSet))
+	for k := range s.unmatchedNewSet {
+		keys = append(keys, k)
 	}
 	return keys
 }
 
 // Pass 1: exact matches (same key, same signature) are silently consumed.
 func (s *diffState) exactMatch() {
-	for key, oldSym := range s.oldByKey {
+	for key := range s.unmatchedOldSet {
 		newSym, ok := s.newByKey[key]
 		if !ok {
 			continue
 		}
+		oldSym := s.oldByKey[key]
 		if oldSym.Signature == newSym.Signature {
 			s.markMatched(key, key)
 		}
@@ -194,24 +203,22 @@ func (s *diffState) changed() {
 // Pass 3: exact-signature renames (unique 1:1 mapping by signature+kind+package).
 // Also builds typeRenames for Pass 4.
 func (s *diffState) renamed() {
-	removedBySig := make(map[string][]symbolKey)
+	removedBySig := make(map[sigGroupKey][]symbolKey)
 	for _, key := range s.unmatchedOld() {
 		oldSym := s.oldByKey[key]
-		sigKey := oldSym.Signature + "|" + string(oldSym.Kind) + "|" + oldSym.Package
-		removedBySig[sigKey] = append(removedBySig[sigKey], key)
+		gk := sigGroupKey{sig: oldSym.Signature, kind: oldSym.Kind, pkg: oldSym.Package}
+		removedBySig[gk] = append(removedBySig[gk], key)
 	}
 
-	addedBySig := make(map[string][]symbolKey)
+	addedBySig := make(map[sigGroupKey][]symbolKey)
 	for _, key := range s.unmatchedNew() {
 		newSym := s.newByKey[key]
-		sigKey := newSym.Signature + "|" + string(newSym.Kind) + "|" + newSym.Package
-		addedBySig[sigKey] = append(addedBySig[sigKey], key)
+		gk := sigGroupKey{sig: newSym.Signature, kind: newSym.Kind, pkg: newSym.Package}
+		addedBySig[gk] = append(addedBySig[gk], key)
 	}
 
-	typeRenames := make(map[string]string)
-
-	for sig, oldKeys := range removedBySig {
-		newKeys, ok := addedBySig[sig]
+	for gk, oldKeys := range removedBySig {
+		newKeys, ok := addedBySig[gk]
 		if !ok {
 			continue
 		}
@@ -244,19 +251,14 @@ func (s *diffState) renamed() {
 
 		// Track type/interface renames for Pass 4.
 		if oldSym.Kind == symbols.SymbolType || oldSym.Kind == symbols.SymbolInterface {
-			typeRenames[oldSym.Name] = newSym.Name
+			s.typeRenames[oldSym.Name] = newSym.Name
 		}
-
-		_ = sig // consumed
 	}
-
-	// Store type renames for correlateMethods.
-	s.correlateWithTypeRenames(typeRenames)
 }
 
 // Pass 4: correlate methods and fields whose receiver/parent type was renamed.
-func (s *diffState) correlateWithTypeRenames(typeRenames map[string]string) {
-	if len(typeRenames) == 0 {
+func (s *diffState) correlateMethods() {
+	if len(s.typeRenames) == 0 {
 		return
 	}
 
@@ -275,7 +277,7 @@ func (s *diffState) correlateWithTypeRenames(typeRenames map[string]string) {
 		receiver := oldSym.Name[:dotIdx]
 		member := oldSym.Name[dotIdx+1:]
 
-		newReceiver, ok := typeRenames[receiver]
+		newReceiver, ok := s.typeRenames[receiver]
 		if !ok {
 			continue
 		}
@@ -283,10 +285,11 @@ func (s *diffState) correlateWithTypeRenames(typeRenames map[string]string) {
 		expectedNewName := newReceiver + "." + member
 		expectedNewKey := symbolKey{pkg: oldSym.Package, kind: oldSym.Kind, name: expectedNewName}
 
-		newSym, found := s.newByKey[expectedNewKey]
-		if !found || s.matchedNew[expectedNewKey] {
+		if _, unmatched := s.unmatchedNewSet[expectedNewKey]; !unmatched {
 			continue
 		}
+
+		newSym := s.newByKey[expectedNewKey]
 
 		if oldSym.Signature == newSym.Signature {
 			s.emit(changespec.Change{
@@ -310,13 +313,6 @@ func (s *diffState) correlateWithTypeRenames(typeRenames map[string]string) {
 		}
 		s.markMatched(oldKey, expectedNewKey)
 	}
-}
-
-// correlateMethods is the public Pass 4 entry point; actual work is done
-// inside renamed() which calls correlateWithTypeRenames.
-func (s *diffState) correlateMethods() {
-	// Type renames are collected and correlated inside renamed().
-	// This method exists to maintain the pass structure in DiffExports.
 }
 
 // Pass 5: fuzzy matching for functions/methods using name similarity and param overlap.
@@ -375,7 +371,7 @@ func (s *diffState) fuzzyMatch() {
 	}
 
 	// Sort by descending score, tie-break by old symbol name.
-	sort.Slice(candidates, func(i, j int) bool {
+	sort.SliceStable(candidates, func(i, j int) bool {
 		if candidates[i].score != candidates[j].score {
 			return candidates[i].score > candidates[j].score
 		}
@@ -384,7 +380,10 @@ func (s *diffState) fuzzyMatch() {
 
 	// Greedy matching.
 	for _, pair := range candidates {
-		if s.matchedOld[pair.oldKey] || s.matchedNew[pair.newKey] {
+		if _, ok := s.unmatchedOldSet[pair.oldKey]; !ok {
+			continue
+		}
+		if _, ok := s.unmatchedNewSet[pair.newKey]; !ok {
 			continue
 		}
 
@@ -406,7 +405,7 @@ func (s *diffState) fuzzyMatch() {
 
 // Pass 6: all remaining unmatched old symbols are classified as removed.
 func (s *diffState) leftovers() {
-	for _, key := range s.unmatchedOld() {
+	for key := range s.unmatchedOldSet {
 		oldSym := s.oldByKey[key]
 		s.emit(changespec.Change{
 			Kind:         changespec.ChangeKindRemoved,
@@ -469,38 +468,40 @@ func nameSimilarity(a, b string) float64 {
 // paramOverlap computes the Jaccard similarity of parameter type multisets.
 // Special case: if both params AND results are empty, returns 1.0 (vacuously true).
 func paramOverlap(a, b funcSignature) float64 {
-	aAll := append(append([]string{}, a.params...), a.results...)
-	bAll := append(append([]string{}, b.params...), b.results...)
+	totalA := len(a.params) + len(a.results)
+	totalB := len(b.params) + len(b.results)
 
-	if len(aAll) == 0 && len(bAll) == 0 {
+	if totalA == 0 && totalB == 0 {
 		return 1.0
 	}
 
-	aSet := make(map[string]int)
-	for _, t := range aAll {
+	aSet := make(map[string]int, totalA)
+	for _, t := range a.params {
+		aSet[t]++
+	}
+	for _, t := range a.results {
 		aSet[t]++
 	}
 
-	bSet := make(map[string]int)
-	for _, t := range bAll {
+	bSet := make(map[string]int, totalB)
+	for _, t := range b.params {
+		bSet[t]++
+	}
+	for _, t := range b.results {
 		bSet[t]++
 	}
 
 	// Jaccard on multisets: intersection = sum of min counts, union = sum of max counts.
 	var intersection, union int
-	allKeys := make(map[string]bool)
-	for k := range aSet {
-		allKeys[k] = true
-	}
-	for k := range bSet {
-		allKeys[k] = true
-	}
-
-	for k := range allKeys {
-		ac := aSet[k]
+	for k, ac := range aSet {
 		bc := bSet[k]
 		intersection += min(ac, bc)
 		union += max(ac, bc)
+	}
+	for k, bc := range bSet {
+		if _, ok := aSet[k]; !ok {
+			union += bc
+		}
 	}
 
 	if union == 0 {

@@ -18,6 +18,7 @@ const (
 	defaultUserAgent    = "emenda/0.1.0"
 	statusNotFound      = http.StatusNotFound
 	statusGone          = http.StatusGone
+	maxZipDownloadSize  = 512 * 1024 * 1024 // 512 MB
 )
 
 // Client downloads module zip files from the Go module proxy.
@@ -116,9 +117,13 @@ func (c *Client) fetch(ctx context.Context, url string) ([]byte, bool, error) {
 		return nil, false, fmt.Errorf("unexpected status %d from %s", resp.StatusCode, url)
 	}
 
-	data, err := io.ReadAll(resp.Body)
+	limitedBody := io.LimitReader(resp.Body, maxZipDownloadSize+1)
+	data, err := io.ReadAll(limitedBody)
 	if err != nil {
 		return nil, false, fmt.Errorf("reading response body from %s: %w", url, err)
+	}
+	if int64(len(data)) > maxZipDownloadSize {
+		return nil, false, fmt.Errorf("response from %s exceeds maximum size of %d bytes", url, maxZipDownloadSize)
 	}
 
 	return data, false, nil

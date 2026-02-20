@@ -1,6 +1,7 @@
 package astdiff
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -20,7 +21,7 @@ func testdataDir(t *testing.T) string {
 
 func TestParseExports_OldFixture(t *testing.T) {
 	dir := filepath.Join(testdataDir(t), "old")
-	syms, sigMap, err := ParseExports(dir, "github.com/acme/testmod")
+	syms, sigMap, err := ParseExports(context.Background(), dir, "github.com/acme/testmod")
 	if err != nil {
 		t.Fatalf("ParseExports: %v", err)
 	}
@@ -103,7 +104,7 @@ func TestParseExports_OldFixture(t *testing.T) {
 
 func TestParseExports_NewFixture(t *testing.T) {
 	dir := filepath.Join(testdataDir(t), "new")
-	syms, _, err := ParseExports(dir, "github.com/acme/testmod")
+	syms, _, err := ParseExports(context.Background(), dir, "github.com/acme/testmod")
 	if err != nil {
 		t.Fatalf("ParseExports: %v", err)
 	}
@@ -138,7 +139,7 @@ func TestParseExports_NewFixture(t *testing.T) {
 
 func TestParseExports_VariadicSignature(t *testing.T) {
 	dir := filepath.Join(testdataDir(t), "old")
-	syms, _, err := ParseExports(dir, "github.com/acme/testmod")
+	syms, _, err := ParseExports(context.Background(), dir, "github.com/acme/testmod")
 	if err != nil {
 		t.Fatalf("ParseExports: %v", err)
 	}
@@ -156,7 +157,7 @@ func TestParseExports_VariadicSignature(t *testing.T) {
 
 func TestParseExports_MethodReceiver(t *testing.T) {
 	dir := filepath.Join(testdataDir(t), "old")
-	syms, _, err := ParseExports(dir, "github.com/acme/testmod")
+	syms, _, err := ParseExports(context.Background(), dir, "github.com/acme/testmod")
 	if err != nil {
 		t.Fatalf("ParseExports: %v", err)
 	}
@@ -177,7 +178,7 @@ func TestParseExports_MethodReceiver(t *testing.T) {
 
 func TestParseExports_SubPackagePath(t *testing.T) {
 	dir := filepath.Join(testdataDir(t), "old")
-	syms, _, err := ParseExports(dir, "github.com/acme/testmod")
+	syms, _, err := ParseExports(context.Background(), dir, "github.com/acme/testmod")
 	if err != nil {
 		t.Fatalf("ParseExports: %v", err)
 	}
@@ -201,7 +202,7 @@ func TestParseExports_EmptyModule(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	syms, sigMap, err := ParseExports(dir, "github.com/empty/mod")
+	syms, sigMap, err := ParseExports(context.Background(), dir, "github.com/empty/mod")
 	if err != nil {
 		t.Fatalf("ParseExports: %v", err)
 	}
@@ -277,7 +278,7 @@ func TestReceiverTypeName(t *testing.T) {
 	// Tested implicitly through ParseExports, but verify the direct function.
 	// Since receiverTypeName takes *ast.FieldList, we test through ParseExports.
 	dir := filepath.Join(testdataDir(t), "old")
-	syms, _, err := ParseExports(dir, "github.com/acme/testmod")
+	syms, _, err := ParseExports(context.Background(), dir, "github.com/acme/testmod")
 	if err != nil {
 		t.Fatalf("ParseExports: %v", err)
 	}
